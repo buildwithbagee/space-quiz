@@ -322,6 +322,26 @@
       font-weight: 600;
       letter-spacing: 0;
     }
+    .personal-best {
+      width: fit-content;
+      margin: -7px auto 22px;
+      padding: 9px 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      color: var(--muted);
+      background: var(--surface-soft);
+      font-size: 14px;
+    }
+    .personal-best strong {
+      margin-left: 5px;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+    .storage-notice {
+      margin: -10px auto 18px;
+      color: var(--wrong);
+      font-size: 13px;
+    }
     .result .primary { display: block; margin: 0 auto; }
     .footer-note {
       margin: 19px 0 0;
@@ -477,9 +497,32 @@
     const answers = document.getElementById("answers");
     const feedback = document.getElementById("feedback");
     const nextButton = document.getElementById("next");
+    const personalBestKey = "orbit-space-quiz-best-score";
     let current = 0;
     let score = 0;
     let answered = false;
+    let personalBest = null;
+    let storageError = false;
+
+    function loadPersonalBest() {
+      try {
+        const savedScore = window.localStorage.getItem(personalBestKey);
+        if (savedScore === null) return;
+        if (!/^(0|[1-9]\d*)$/.test(savedScore)) {
+          storageError = true;
+          return;
+        }
+
+        const parsedScore = Number(savedScore);
+        if (Number.isInteger(parsedScore) && parsedScore <= questions.length) {
+          personalBest = parsedScore;
+        } else {
+          storageError = true;
+        }
+      } catch {
+        storageError = true;
+      }
+    }
 
     function renderQuestion() {
       const item = questions[current];
@@ -538,6 +581,16 @@
 
     function showResults() {
       quiz.hidden = true;
+      if (personalBest === null || score >= personalBest) {
+        personalBest = score;
+        try {
+          window.localStorage.setItem(personalBestKey, String(personalBest));
+          storageError = false;
+        } catch {
+          storageError = true;
+        }
+      }
+
       const percentage = score / questions.length;
       const reaction = percentage === 1
         ? ["🏆", "Out of this world!", "Perfect score! You're a true space explorer."]
@@ -553,6 +606,8 @@
         <h1>${reaction[1]}</h1>
         <p class="result-copy">${reaction[2]}</p>
         <p class="final-score">${score}<small>/ ${questions.length} correct</small></p>
+        <p class="personal-best">Personal best <strong>${personalBest === null ? "Unavailable" : `${personalBest} / ${questions.length}`}</strong></p>
+        ${storageError ? '<p class="storage-notice" role="status">This browser could not save your personal best. Your score is only available for this session.</p>' : ""}
         <button class="primary" id="play-again" type="button">Play again <span aria-hidden="true">↻</span></button>
       `;
       result.hidden = false;
@@ -579,6 +634,7 @@
       }
     });
 
+    loadPersonalBest();
     renderQuestion();
   </script>
 </body>
